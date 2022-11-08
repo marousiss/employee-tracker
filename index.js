@@ -1,7 +1,7 @@
 // Packages needed for this application
 const inquirer = require('inquirer');
-const mysql = require('mysql2');
 const cTable = require('console.table');
+const dbQryFunc = require('./src/dbQueryFunctions');
 
 // Clears the console
 console.clear();
@@ -10,19 +10,6 @@ console.log("                           ----------------------------------------
 console.log("                           |        Manage Employee Database               |");
 console.log("                           -------------------------------------------------\n\n\n");
 
-// Connect to database
-const db = mysql.createConnection(
-    {
-        host: 'localhost',
-        // MySQL username,
-        user: 'root',
-        // MySQL password
-        password: 'passabc',
-        //database: 'employee_db'
-        database: 'employee_db'
-    },
-    console.log(`Connected to the employee_db database.`)
-);
 
 
 // Function to get the user's input and do accordingly
@@ -45,92 +32,45 @@ const processSelection = async (userChoice) => {
 
     switch (userChoice) {
         case "View All Employees":
-            const empResults = await getEmployees();
-            const managers = await getManagers(empResults);
+            const empResults = await dbQryFunc.getEmployees();
+            const managers = await dbQryFunc.getManagers(empResults);
             await viewEmployees(empResults, managers);
             break;
         case "Add Employees":
-            const roles = await getRoles();
-            const employees = await getEmployees();
+            const roles = await dbQryFunc.getRoles();
+            const employees = await dbQryFunc.getEmployees();
             const newEmployee = await getNewEmployee(roles, employees);
-            await addEmployee(newEmployee);
+            await dbQryFunc.addEmployee(newEmployee);
             break;
         case "Update Employee Role":
-            const roleNames = await getRoleNames();
-            const emplNames = await getEmpNames();
+            const roleNames = await dbQryFunc.getRoleNames();
+            const emplNames = await dbQryFunc.getEmpNames();
             const empRole = await getEmplNewRole(roleNames, emplNames);
-            const roleId = await getRoleId(empRole);
-            await updateEmployeeRole(empRole, roleId);
+            const roleId = await dbQryFunc.getRoleId(empRole);
+            await dbQryFunc.updateEmployeeRole(empRole, roleId);
             break;
         case "View All Roles":
-            const roleResults = await getRoles();
+            const roleResults = await dbQryFunc.getRoles();
             await viewRoles(roleResults);
             break;
         case "Add Role":
-            const departs = await getDepartments();
+            const departs = await dbQryFunc.getDepartments();
             const newRole = await getNewRole(departs);
-            const departmentId = await getDepartmentId(newRole.department);
-            await addRole(newRole, departmentId);
+            const departmentId = await dbQryFunc.getDepartmentId(newRole.department);
+            await dbQryFunc.addRole(newRole, departmentId);
             break;
         case "View All Departments":
-            const depResults = await getDepartments();
+            const depResults = await dbQryFunc.getDepartments();
             await viewDepartments(depResults);
             break;
         case "Add Department":
             const newDepartment = await getNewDepartment();
-            await addDepartment(newDepartment);
+            await dbQryFunc.addDepartment(newDepartment);
             break;
     }
 
     startEmplMenu();
 }
-
-// Function to get alll employees from the database
-const getEmployees = () => {
-
-    const emplQuery = `SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS "department", role.salary, employee.manager_id FROM employee JOIN role ON employee.role_id = role.id JOIN department ON department.id = role.department_id`;
-
-    return new Promise((resolve, reject) => {
-        db.query(emplQuery, (err, results) => {
-            if (!err) {
-                resolve(results);
-            } else {
-                throw err;
-            }
-        });
-    });
-}
-
-const getEmpNames = () => {
-    return new Promise((resolve, reject) => {
-        db.query(`SELECT CONCAT(employee.first_name, ' ', employee.last_name) AS name FROM employee`, (err, results) => {
-            if (!err) {
-                let empNames = [];
-                results.forEach(employee => empNames.push(employee.name));
-                resolve(empNames);
-            } else {
-                throw err;
-            }
-        });
-    });
-}
-
-const getManagers = (employees) => {
-
-    const managerQuery = ` SELECT CONCAT(m.first_name, ' ', m.last_name) AS employee , CONCAT(e.first_name, ' ', e.last_name) as manager FROM employee e RIGHT JOIN employee m ON m.manager_id = e.id`;
-
-    return new Promise((resolve, reject) => {
-        db.query(managerQuery, (err, results) => {
-            if (!err) {
-                resolve(results);
-            } else {
-                throw err;
-            }
-        });
-    });
-
-}
-
 
 // View Employees
 const viewEmployees = (employees, managers) => {
@@ -162,48 +102,6 @@ const viewEmployees = (employees, managers) => {
     });
 }
 
-// Get all Roles from database
-const getRoles = () => {
-    const roleQuery = `SELECT role.id, role.title, department.name AS department, role.salary FROM role JOIN department ON department.id = role.department_id`;
-    return new Promise((resolve, reject) => { 
-        db.query(roleQuery, (err, results) => {
-            if (!err) {
-                resolve(results);
-            } else {
-                throw err;
-            }
-        })
-    });
-}
-
-// Function to get the role titles
-const getRoleNames = () => {
-    return new Promise((resolve, reject) => { 
-        db.query(`SELECT DISTINCT role.title FROM role`, (err, results) => {
-            if (!err) {
-                let roleNames = [];
-                results.forEach(role => roleNames.push(role.title));
-                resolve(roleNames);
-            } else {
-                throw err;
-            }
-        })
-    });
-}
-
-// Function to get the role id 
-const getRoleId = (empRole) => {
-    return new Promise((resolve, reject) => {
-        db.query(`SELECT role.id FROM role WHERE role.title = "${empRole.role}"`, (err, results) => {
-            if (!err) {
-                resolve(results);
-            } else {
-                throw err;
-            }
-        })
-    });
-}
-
 // View Roles
 const viewRoles = (results) => {
     return new Promise((resolve, reject) => { 
@@ -213,18 +111,6 @@ const viewRoles = (results) => {
     });
 }
 
-// Function to get all departments from the database table 
-const getDepartments = () => {
-    return new Promise((resolve, reject) => { 
-        db.query('SELECT * FROM department', (err, results) => {
-            if (!err) {    
-                resolve(results);
-            } else {
-                reject('error: Something went wrong.');
-            }
-        })
-    });
-}
 
 // View Departments
 const viewDepartments = (results) => {
@@ -301,25 +187,6 @@ const getNewEmployee = (roles, employees) => {
     });
 }
 
-//Function to add an employee to database
-const addEmployee = (newEmployee) => {
-
-    return new Promise((resolve, reject) => {
-        const emplQuery = `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ('${newEmployee.firstName}', '${newEmployee.lastName}', ${newEmployee.roleId}, ${newEmployee.managerId})`;
-
-        db.query(emplQuery, (err, results) => {
-
-            if (!err) {
-                console.log(`\n${newEmployee.firstName} ${newEmployee.lastName} added to the database.\n`);
-                resolve();
-            } else {
-                console.log(err);
-                throw err;
-            }
-        });
-    });
-}
-
 //Function to get employees new role from user's input
 const getEmplNewRole = (roleNames, empNames) => {
     return new Promise((resolve, reject) => {
@@ -340,28 +207,6 @@ const getEmplNewRole = (roleNames, empNames) => {
             ])
             .then((answer) => resolve(answer))
             .catch((err) => console.log(err));
-    });
-}
-
-const updateEmployeeRole = (empRole, roleId) => {
-
-    const nameArr = empRole.employee.split(" ");
-    const firstName = nameArr[0];
-    const lastName = nameArr[1];
-    let rlId = roleId[0].id;
-    
-    const updateRoleQuery = `UPDATE employee SET employee.role_id = ${rlId} WHERE employee.first_name = "${firstName}" AND employee.last_name = "${lastName}"`;
-    return new Promise((resolve, reject) => {
-        //resolve();
-        db.query(updateRoleQuery, (err, results) => {
-            if (!err) {
-                console.log(`\nUpdated employee's role.\n`);
-                resolve();
-            } else {
-                console.log(err);
-                throw err;
-            }
-        });
     });
 }
 
@@ -399,36 +244,6 @@ const getNewRole = (departs) => {
 }
 
 
-//Function to add arole to the database
-const addRole = (newRole, depId) => {
-
-    return new Promise((resolve, reject) => {
-        const salary = parseInt(newRole.salary);
-        const roleQuery = `INSERT INTO role (title, salary, department_id) VALUES ('${newRole.title}', ${salary}, ${depId})`;
-
-        db.query(roleQuery, (err, results) => {
-            if (!err) {
-                console.log(`\n${newRole.title} added to the database.\n`);
-                resolve();
-            } else {
-                reject(err);
-            }
-        });
-    });
-}
-
-// Function to get department id 
-const getDepartmentId = (department) => {
-    return new Promise((resolve, reject) => {
-        db.query(`SELECT id FROM department WHERE name = '${department}'`, (err, results) => {
-            if (!err) {
-                resolve(results[0].id);    
-            } else {
-                reject(err);
-            }
-        });
-    });
-}
 
 //Function to get department name from the user input
 const getNewDepartment = () => {
@@ -439,55 +254,13 @@ const getNewDepartment = () => {
                 type: 'input',
                 name: 'department',
                 message: 'What is the name of the department?',
-                validate: (val) => valDepartment(val),
+                validate: (val) => dbQryFunc.valDepartment(val),
             }])
             .then((answer) => resolve(answer.department))
             .catch((error) => console.log(error));
     });
 }
 
-
-// Function to add department to database
-const addDepartment = (department) => {
-    
-    return new Promise((resolve, reject) => {
-        const depQuery = `INSERT INTO department (name) VALUES ('${department}')`;
-        db.query(depQuery, (err, results) => {
-            if (!err) {
-                console.log(`\n${department} added to the database.\n`);
-                resolve();
-            } else {
-                throw err;
-            }
-        })
-    });       
-}
-
-// Function to validate user input department name
-const valDepartment = (val) => {
-    return new Promise((resolve, reject) => {
-        if (!val) {
-            console.log("Please enter a valid value");
-            reject(false);
-        } else {
-            // Check if department already in table
-            const depQuery = `SELECT name FROM department WHERE name = '${val}'`;
-            db.query(depQuery, (err, results) => {
-                if (!err) {
-                    if (results.length > 0) {
-                        // department already in table
-                        console.log(" - Department already in table. Please add a new department");
-                        reject(false);
-                    }
-                    resolve(true);
-                } else {
-                    console.log("something went wrong while reading department table\n" + err);
-                    reject(false);
-                }
-            })
-        }
-    });
-}
 
 
 function getMenuChoice() {
