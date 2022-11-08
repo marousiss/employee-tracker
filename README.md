@@ -12,7 +12,9 @@ Please run `npm i` to install dependencies.
 
 ## Usage
 
-To use this application please run `npm start` in the command line.
+1. Run `source schema.sql` and `source seeds.sql`.
+
+2. Run `npm start` in the command line to start the application.
 
 
 ## Credits
